@@ -1,0 +1,17 @@
+# Python
+__pycache__/
+*.py[cod]
+
+# Virtual environment (recreate with `uv sync`)
+.venv/
+
+# Jupyter
+.ipynb_checkpoints/
+
+# Downloads (we keep only the unzipped CSV)
+*.zip
+
+# Editors and OS
+.vscode/
+.idea/
+.DS_Store

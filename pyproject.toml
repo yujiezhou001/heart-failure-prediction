@@ -1,7 +1,7 @@
 [project]
 name = "heart-failure-prediction"
 version = "0.1.0"
-description = "Add your description here"
+description = "Predict heart disease from routine clinical measurements"
 readme = "README.md"
 requires-python = ">=3.12"
 dependencies = [
