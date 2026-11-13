@@ -84,13 +84,52 @@ In the notebook, the column names are converted to lowercase with underscores (f
 
 ## EDA summary
 
-The full analysis is in [`notebook.ipynb`](notebook.ipynb), section 4.
+The full analysis is in [`notebook.ipynb`](notebook.ipynb), sections 4 (EDA) and 6 (feature importance).
 
 - **Target:** 508 patients (55%) have heart disease and 410 (45%) don't, so the classes are fairly balanced.
 - **Hidden missing values:** the CSV has no empty cells, but 172 patients (19%) have a cholesterol of 0 and 1 patient has a resting blood pressure of 0, which is impossible. We mark them as missing. After the train/validation/test split, we fill them in all three sets with a value calculated from the training data only.
 - **Missing cholesterol shows the hospital, not the patient:** 88% of patients with missing cholesterol have heart disease, compared with 48% of the others. All 172 zeros come from the two hospitals that didn't record cholesterol (Switzerland and Long Beach VA), and those hospitals had many more heart disease patients. A model could pick up this shortcut, which wouldn't help a real clinic.
 - **Numerical features:** compared with healthy patients, patients with heart disease are older (56 vs 51 years), reach a lower maximum heart rate during the exercise test (128 vs 148) and have a bigger ECG change during exercise (`oldpeak` 1.3 vs 0.4). Resting blood pressure and cholesterol differ only a little.
 - **Categorical features:** 79% of the patients are men, and more than half have no chest pain symptoms (`ASY`). Every category has at least 46 patients.
+
+### Feature importance
+
+Calculated on the 80% of patients used for training (`df_full_train`), so the test set stays unseen.
+
+**Categorical features: mutual information.** How much knowing the feature tells us about heart disease. Higher means more useful.
+
+| Feature | Mutual information |
+|---|---|
+| `st_slope` | 0.184 |
+| `chest_pain_type` | 0.152 |
+| `exercise_angina` | 0.123 |
+| `sex` | 0.046 |
+| `fasting_bs` | 0.031 |
+| `resting_ecg` | 0.007 |
+
+**Risk ratio:** the heart disease rate in a group divided by the overall rate (54%). Above 1 means higher risk than average. The clearest differences:
+
+- `st_slope`: flat 81% (risk 1.49) vs up 21% (risk 0.39)
+- `exercise_angina`: yes 84% (1.55) vs no 35% (0.64)
+- `chest_pain_type`: no symptoms (`ASY`) 77% (1.43) vs atypical angina (`ATA`) 12% (0.22). Surprisingly, patients without chest pain symptoms have the highest rate.
+- `sex`: men 62% (1.14) vs women 26% (0.47)
+- `fasting_bs`: high blood sugar 76% (1.41) vs normal 48% (0.88)
+- `resting_ecg` barely matters: 51% to 66% in every group.
+
+**Numerical features: correlation** with heart disease, from −1 to 1. The further from 0, the stronger.
+
+| Feature | Correlation | Meaning |
+|---|---|---|
+| `max_hr` | −0.40 | lower maximum heart rate → more heart disease |
+| `oldpeak` | +0.38 | bigger ECG change during exercise → more heart disease |
+| `age` | +0.28 | older → more heart disease |
+| `fasting_bs` | +0.24 | high blood sugar → more heart disease |
+| `resting_bp` | +0.12 | weak |
+| `cholesterol` | +0.08 | weak (measured values only) |
+
+**Missing cholesterol:** a 0/1 flag for "cholesterol was missing" has a correlation of **0.35**. That's much stronger than cholesterol itself and close to the top features. It's the hospital shortcut described above, and we take it into account when we decide how to fill in the missing values.
+
+**Takeaway:** the exercise stress test results (`st_slope`, `exercise_angina`, `oldpeak`, `max_hr`) and the chest pain type carry most of the signal. The resting ECG, resting blood pressure and cholesterol carry little. We keep all 11 features and let the models decide how much to use each one.
 
 ## Setup
 
