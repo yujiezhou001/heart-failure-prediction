@@ -80,6 +80,18 @@ unzip data/heart.zip -d data && rm data/heart.zip
 | `ST_Slope` | Slope of the ST segment at peak exercise | `Up`, `Flat`, `Down` |
 | **`HeartDisease`** | **Target:** heart disease diagnosed | `1` yes, `0` no |
 
+In the notebook, the column names are converted to lowercase with underscores (for example `ChestPainType` → `chest_pain_type`), and the text values to lowercase.
+
+## EDA summary
+
+The full analysis is in [`notebook.ipynb`](notebook.ipynb), section 4.
+
+- **Target:** 508 patients (55%) have heart disease and 410 (45%) don't, so the classes are fairly balanced.
+- **Hidden missing values:** the CSV has no empty cells, but 172 patients (19%) have a cholesterol of 0 and 1 patient has a resting blood pressure of 0, which is impossible. We mark them as missing. After the train/validation/test split, we fill them in all three sets with a value calculated from the training data only.
+- **Missing cholesterol shows the hospital, not the patient:** 88% of patients with missing cholesterol have heart disease, compared with 48% of the others. All 172 zeros come from the two hospitals that didn't record cholesterol (Switzerland and Long Beach VA), and those hospitals had many more heart disease patients. A model could pick up this shortcut, which wouldn't help a real clinic.
+- **Numerical features:** compared with healthy patients, patients with heart disease are older (56 vs 51 years), reach a lower maximum heart rate during the exercise test (128 vs 148) and have a bigger ECG change during exercise (`oldpeak` 1.3 vs 0.4). Resting blood pressure and cholesterol differ only a little.
+- **Categorical features:** 79% of the patients are men, and more than half have no chest pain symptoms (`ASY`). Every category has at least 46 patients.
+
 ## Setup
 
 You need [uv](https://docs.astral.sh/uv/getting-started/installation/). It installs the right Python version for you.
@@ -108,6 +120,7 @@ To open the notebook, choose the `.venv` kernel in VS Code, or run `uv run --wit
 .
 ├── data/
 │   └── heart.csv       # the dataset
+├── notebook.ipynb      # data preparation, EDA and model selection
 ├── pyproject.toml      # project dependencies
 ├── uv.lock             # exact versions of every library
 └── README.md
