@@ -133,7 +133,7 @@ Calculated on the 80% of patients used for training (`df_full_train`), so the te
 
 ## Modeling
 
-Details are in [`notebook.ipynb`](notebook.ipynb), sections 7 and 8. The data is split 60% / 20% / 20% into train (550 patients), validation (184) and test (184), with `random_state=1`.
+Details are in [`notebook.ipynb`](notebook.ipynb), sections 7 to 14. The data is split 60% / 20% / 20% into train (550 patients), validation (184) and test (184), with `random_state=1`.
 
 ### Filling in the missing values
 
@@ -163,6 +163,55 @@ At the default threshold of 0.5, logistic regression finds 82 of the 98 patients
 | Mean ROC AUC | 0.787 | 0.886 | 0.913 | 0.914 | 0.913 | 0.913 | 0.913 |
 
 Any `C` from 0.1 to 10 gives practically the same result, with a fold-to-fold variation of about ±0.03. We keep `C=1.0`.
+
+### Tree-based models
+
+Each model was tuned on the validation set, with the same features and the same missing-value fill as logistic regression.
+
+| Model | Parameters tuned | Best values | Validation ROC AUC |
+|---|---|---|---|
+| Decision tree | `max_depth`, `min_samples_leaf` | 4, 20 | 0.871 |
+| Random forest | `n_estimators`, `max_depth`, `min_samples_leaf` | 160, 10, 1 | 0.910 |
+| XGBoost | `eta`, `max_depth`, `min_child_weight`, number of rounds | 0.05, 2, 1, 200 | 0.906 |
+
+- **Decision tree:** a tree with no depth limit memorizes the training data and drops to 0.736 on validation. Limiting the depth and the leaf size fixes that.
+- **XGBoost:** very shallow trees (`max_depth=2`) work best. With only 550 training patients, deeper trees overfit. For `eta`, 0.05 and 0.1 were tied: a smaller `eta` only needs more rounds (in 5-fold CV, `eta=0.05` with 200 rounds and `eta=0.1` with 100 rounds both score 0.919). We kept 0.05 because its validation curve stays flat near the peak, so the exact number of rounds matters less. Larger values (0.3 and 1.0) peak after a few rounds and then get worse.
+
+### Choosing the final model
+
+The validation set has only 184 patients, so we also compared the tuned models with 5-fold cross-validation on the full training data:
+
+| Model | Validation ROC AUC | 5-fold CV ROC AUC |
+|---|---|---|
+| Logistic regression | 0.903 | 0.913 ± 0.027 |
+| Decision tree | 0.871 | 0.895 ± 0.030 |
+| Random forest | **0.910** | 0.918 ± 0.028 |
+| XGBoost | 0.906 | **0.919 ± 0.022** |
+
+**We chose XGBoost:** it has the highest and most stable cross-validation score. The differences between logistic regression, random forest and XGBoost are small (within the ±0.03 noise), so logistic regression would also be a reasonable, simpler choice.
+
+### Choosing the decision threshold
+
+The model gives a probability. The threshold turns it into a yes/no flag. Since missing a sick patient is the costly mistake, we chose **the highest threshold that still finds at least 90% of the patients with heart disease** on the validation set: **0.3**.
+
+| Threshold (validation set) | Precision | Recall | Sick patients missed | False alarms |
+|---|---|---|---|---|
+| 0.5 (default) | 85% | 85% | 15 of 98 | 15 |
+| **0.3** | 76% | **92%** | **8 of 98** | 28 |
+
+At 0.3 the model misses about half as many sick patients, in exchange for more false alarms. That's the trade-off described in the problem description.
+
+### Final result on the test set
+
+XGBoost trained on the full training data (734 patients) and scored once on the test set (184 patients):
+
+| Metric | Result |
+|---|---|
+| ROC AUC | **0.956** |
+| Recall at threshold 0.3 | **96%** (106 of 110 patients with heart disease found, 4 missed) |
+| Precision at threshold 0.3 | 88% (14 false alarms among 120 flagged patients) |
+
+The test AUC is higher than the cross-validation estimate (0.919). With only 184 patients, a test set can be easier than average by chance, so **about 0.92 is the more realistic expectation for new patients**.
 
 ## Setup
 
