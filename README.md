@@ -131,6 +131,39 @@ Calculated on the 80% of patients used for training (`df_full_train`), so the te
 
 **Takeaway:** the exercise stress test results (`st_slope`, `exercise_angina`, `oldpeak`, `max_hr`) and the chest pain type carry most of the signal. The resting ECG, resting blood pressure and cholesterol carry little. We keep all 11 features and let the models decide how much to use each one.
 
+## Modeling
+
+Details are in [`notebook.ipynb`](notebook.ipynb), sections 7 and 8. The data is split 60% / 20% / 20% into train (550 patients), validation (184) and test (184), with `random_state=1`.
+
+### Filling in the missing values
+
+We compared three ways to fill the missing cholesterol and blood pressure values, using logistic regression on the validation set. The fill values are calculated from the training data only.
+
+| How the missing values are filled | Validation ROC AUC |
+|---|---|
+| Leave them as 0 | 0.909 |
+| Training median | 0.903 |
+| Training median + a "cholesterol was missing" flag | 0.909 |
+
+The hospital shortcut (the zeros, or the flag) adds only 0.006 AUC. That's smaller than the normal variation between cross-validation folds (about ±0.03, see below). **We use the training median.** It costs almost nothing, and the model doesn't rely on a shortcut that wouldn't exist in a real clinic, where cholesterol is always measured.
+
+### Logistic regression
+
+| Model (validation set) | ROC AUC | Accuracy | Precision | Recall |
+|---|---|---|---|---|
+| Baseline: "heart disease" for everyone | 0.500 | 53% | 53% | 100% |
+| Logistic regression, `C=1.0`, threshold 0.5 | **0.903** | 83% | 84% | 84% |
+
+At the default threshold of 0.5, logistic regression finds 82 of the 98 patients with heart disease in the validation set and misses 16.
+
+**Tuning `C`** (the regularization strength) with 5-fold cross-validation on the full training data (80% of patients):
+
+| `C` | 0.001 | 0.01 | 0.1 | 0.5 | 1 | 5 | 10 |
+|---|---|---|---|---|---|---|---|
+| Mean ROC AUC | 0.787 | 0.886 | 0.913 | 0.914 | 0.913 | 0.913 | 0.913 |
+
+Any `C` from 0.1 to 10 gives practically the same result, with a fold-to-fold variation of about ±0.03. We keep `C=1.0`.
+
 ## Setup
 
 You need [uv](https://docs.astral.sh/uv/getting-started/installation/). It installs the right Python version for you.
