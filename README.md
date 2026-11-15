@@ -271,6 +271,84 @@ the model is saved to model.bin
 
 `model.bin` is included in the repository, so you can skip this step if you only want to run the prediction service.
 
+## Running the prediction service
+
+`predict.py` loads `model.bin` and serves it as a web service with [FastAPI](https://fastapi.tiangolo.com/). Start it with:
+
+```bash
+uv run uvicorn predict:app --host 0.0.0.0 --port 9696
+```
+
+It has two endpoints:
+
+- `GET /health` returns `{"status": "ok"}` when the service is running.
+- `POST /predict` takes one patient and returns the probability of heart disease and a yes/no flag (yes when the probability is at least 0.3).
+
+### Example
+
+In a second terminal:
+
+```bash
+curl -s http://localhost:9696/health
+```
+
+```bash
+curl -s -X POST http://localhost:9696/predict \
+  -H 'Content-Type: application/json' \
+  -d '{
+    "age": 55,
+    "sex": "m",
+    "chest_pain_type": "asy",
+    "resting_bp": 135,
+    "cholesterol": 204,
+    "fasting_bs": 1,
+    "resting_ecg": "st",
+    "max_hr": 126,
+    "exercise_angina": "y",
+    "oldpeak": 1.1,
+    "st_slope": "flat"
+  }'
+```
+
+Response:
+
+```json
+{"heart_disease_probability":0.924,"heart_disease":true}
+```
+
+The same request is in [`predict-test.py`](predict-test.py), which also prints what the clinic would do next:
+
+```bash
+uv run python predict-test.py
+```
+
+```
+{'heart_disease_probability': 0.924, 'heart_disease': True}
+refer patient-563 for follow-up tests
+```
+
+You can also try the service in the browser at http://localhost:9696/docs, which FastAPI creates automatically.
+
+### Input fields
+
+The fields use the same names and values as the prepared data in the notebook (lowercase):
+
+| Field | Allowed values |
+|---|---|
+| `age` | whole number of years |
+| `sex` | `m`, `f` |
+| `chest_pain_type` | `asy`, `nap`, `ata`, `ta` |
+| `resting_bp` | mm Hg, greater than 0. **Optional:** leave it out (or send `null`) if it wasn't measured |
+| `cholesterol` | mg/dl, greater than 0. **Optional:** leave it out (or send `null`) if it wasn't measured |
+| `fasting_bs` | `0`, `1` |
+| `resting_ecg` | `normal`, `lvh`, `st` |
+| `max_hr` | beats per minute |
+| `exercise_angina` | `y`, `n` |
+| `oldpeak` | number (can be negative) |
+| `st_slope` | `up`, `flat`, `down` |
+
+A missing `resting_bp` or `cholesterol` is filled with the training median saved in `model.bin`, the same way as during training. Any other wrong or missing value is rejected with a `422` error that says which field is wrong. For example, `"sex": "M"` gives `Input should be 'm' or 'f'`.
+
 ## Project structure
 
 ```
@@ -280,6 +358,8 @@ the model is saved to model.bin
 ├── notebook.ipynb      # data preparation, EDA and model selection
 ├── train.py            # trains the final model and saves model.bin
 ├── model.bin           # the trained model (fill values, DictVectorizer, XGBoost, threshold)
+├── predict.py          # the prediction web service (FastAPI)
+├── predict-test.py     # sends an example patient to the running service
 ├── pyproject.toml      # project dependencies
 ├── uv.lock             # exact versions of every library
 └── README.md
