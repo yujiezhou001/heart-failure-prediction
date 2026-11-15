@@ -235,6 +235,42 @@ or put `uv run` in front of each command (for example `uv run python train.py`),
 
 To open the notebook, choose the `.venv` kernel in VS Code, or run `uv run --with jupyter jupyter lab`.
 
+## Training the model
+
+`train.py` trains the final model chosen in the notebook and saves it to `model.bin`:
+
+```bash
+uv run python train.py
+```
+
+It takes a few seconds and does the following:
+
+1. Prepares the data the same way as the notebook: renames the columns, makes the text values lowercase, and marks the cholesterol and blood pressure zeros as missing.
+2. Splits off the same test set as the notebook (20%, `random_state=1`).
+3. Checks the model with 5-fold cross-validation on the remaining 80%.
+4. Trains XGBoost (`eta=0.05`, `max_depth=2`, `min_child_weight=1`, 200 rounds) on that 80%, filling missing values with its medians.
+5. Scores it once on the test set.
+6. Saves the fill values, the `DictVectorizer`, the model and the threshold (0.3) to `model.bin` with `pickle`.
+
+Expected output:
+
+```
+doing validation with 5-fold cross-validation
+auc on fold 0 is 0.911
+auc on fold 1 is 0.903
+auc on fold 2 is 0.920
+auc on fold 3 is 0.901
+auc on fold 4 is 0.960
+validation results:
+auc = 0.919 +- 0.022
+training the final model
+test auc = 0.956
+at threshold 0.3: recall = 0.964, precision = 0.883
+the model is saved to model.bin
+```
+
+`model.bin` is included in the repository, so you can skip this step if you only want to run the prediction service.
+
 ## Project structure
 
 ```
@@ -242,6 +278,8 @@ To open the notebook, choose the `.venv` kernel in VS Code, or run `uv run --wit
 ├── data/
 │   └── heart.csv       # the dataset
 ├── notebook.ipynb      # data preparation, EDA and model selection
+├── train.py            # trains the final model and saves model.bin
+├── model.bin           # the trained model (fill values, DictVectorizer, XGBoost, threshold)
 ├── pyproject.toml      # project dependencies
 ├── uv.lock             # exact versions of every library
 └── README.md
