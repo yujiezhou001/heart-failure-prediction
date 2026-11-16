@@ -405,8 +405,6 @@ refer patient-563 for follow-up tests
 
 Stop the container with Ctrl+C.
 
-The image is about 2.3 GB on disk. About 200 MB of that is NVIDIA's NCCL library, which XGBoost installs on Linux for training on GPUs. This project doesn't use it, but it comes with the standard `xgboost` package.
-
 ## Deploying to the cloud (Fly.io)
 
 The Docker image was deployed to [Fly.io](https://fly.io), following the module 5 workshop. It ran at `https://dawn-glow-1669.fly.dev` and was tested with the same script as locally:
@@ -464,8 +462,6 @@ refer patient-563 for follow-up tests
    ```bash
    fly apps destroy <your-app-name>
    ```
-
-The service is public: anyone with the URL can call it. A real deployment would need authentication, which is out of scope for this project.
 
 ## Limitations and next steps
 
