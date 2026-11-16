@@ -4,6 +4,23 @@ Predict whether a patient has heart disease from 11 routine clinical measurement
 
 > Educational project. Not a medical tool and not medical advice.
 
+## Overview
+
+```mermaid
+flowchart LR
+    data["data/heart.csv<br/>918 patients"] --> notebook["notebook.ipynb<br/>EDA and model selection"]
+    notebook -- "chosen model<br/>and settings" --> train["train.py"]
+    data --> train
+    train --> model["model.bin<br/>fill values, DictVectorizer,<br/>XGBoost, threshold 0.3"]
+    model --> api["predict.py<br/>FastAPI service"]
+    api --> docker["Docker image"]
+    docker --> fly["Fly.io"]
+    client["Clinic software"] -- "POST /predict<br/>one patient" --> api
+    api -- "probability<br/>and yes/no" --> client
+```
+
+**Contents:** [Problem description](#problem-description) · [Dataset](#dataset) · [EDA summary](#eda-summary) · [Modeling](#modeling) · [Setup](#setup) · [Training the model](#training-the-model) · [Running the prediction service](#running-the-prediction-service) · [Running with Docker](#running-with-docker) · [Deploying to the cloud](#deploying-to-the-cloud-flyio) · [Limitations and next steps](#limitations-and-next-steps) · [Project structure](#project-structure)
+
 ## Problem description
 
 ### Background
@@ -449,6 +466,13 @@ refer patient-563 for follow-up tests
    ```
 
 The service is public: anyone with the URL can call it. A real deployment would need authentication, which is out of scope for this project.
+
+## Limitations and next steps
+
+- **Small, old data.** 918 patients from four hospitals, collected in the 1980s, and 79% of them men. A clinic would need to check the model on its own patients before relying on it.
+- **The threshold and the 90% recall target** were chosen on 184 validation patients. A real clinic would set the target with its doctors, based on how many follow-up tests it can handle.
+- **The input checks are basic.** Values must be greater than 0, but there are no upper limits, so an impossible value such as `"oldpeak": 80` is accepted. **Next step:** add realistic ranges to the `Patient` class.
+- **Large Docker image.** About 200 MB of it is a GPU library that XGBoost installs on Linux and this project doesn't use.
 
 ## Project structure
 
