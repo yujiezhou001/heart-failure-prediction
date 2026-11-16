@@ -390,6 +390,66 @@ Stop the container with Ctrl+C.
 
 The image is about 2.3 GB on disk. About 200 MB of that is NVIDIA's NCCL library, which XGBoost installs on Linux for training on GPUs. This project doesn't use it, but it comes with the standard `xgboost` package.
 
+## Deploying to the cloud (Fly.io)
+
+The Docker image was deployed to [Fly.io](https://fly.io), following the module 5 workshop. It ran at `https://dawn-glow-1669.fly.dev` and was tested with the same script as locally:
+
+```bash
+uv run python predict-test.py https://dawn-glow-1669.fly.dev
+```
+
+```
+{'heart_disease_probability': 0.924, 'heart_disease': True}
+refer patient-563 for follow-up tests
+```
+
+![Testing the deployed service on Fly.io](images/fly-deployment.png)
+
+**The app was destroyed after testing so that it doesn't keep running and costing money, so this URL no longer works.** You can deploy your own copy with the steps below.
+
+### How to deploy
+
+[`fly.toml`](fly.toml) holds the settings: build from the `Dockerfile`, send traffic to port 9696, use one small machine (1 shared CPU, 512 MB, since the service uses about 230 MB), and stop the machine when nobody is using it.
+
+1. Install the Fly.io command-line tool and create an account (new accounts get a free trial; no credit card needed):
+
+   ```bash
+   brew install flyctl
+   fly auth signup
+   ```
+
+   On Linux or Windows, see [installing flyctl](https://fly.io/docs/flyctl/install/).
+
+2. App names are unique across all of Fly.io, so change `app = 'dawn-glow-1669'` in `fly.toml` to a name of your own, and create the app:
+
+   ```bash
+   fly apps create <your-app-name>
+   ```
+
+3. Build and deploy. The image is built on Fly.io's servers, and one machine is started:
+
+   ```bash
+   fly deploy --ha=false
+   ```
+
+   It ends with `Visit your newly deployed app at https://<your-app-name>.fly.dev/`.
+
+4. Test it:
+
+   ```bash
+   uv run python predict-test.py https://<your-app-name>.fly.dev
+   ```
+
+   You can also open `https://<your-app-name>.fly.dev/docs` in the browser.
+
+5. When you're done, delete the app so it stops costing money:
+
+   ```bash
+   fly apps destroy <your-app-name>
+   ```
+
+The service is public: anyone with the URL can call it. A real deployment would need authentication, which is out of scope for this project.
+
 ## Project structure
 
 ```
@@ -403,6 +463,9 @@ The image is about 2.3 GB on disk. About 200 MB of that is NVIDIA's NCCL library
 ├── predict-test.py     # sends an example patient to the running service
 ├── Dockerfile          # builds the image for the prediction service
 ├── .dockerignore       # files Docker doesn't need to copy
+├── fly.toml            # Fly.io deployment settings
+├── images/
+│   └── fly-deployment.png  # screenshot of the deployed service
 ├── pyproject.toml      # project dependencies
 ├── uv.lock             # exact versions of every library
 └── README.md

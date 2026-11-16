@@ -3,12 +3,18 @@
 
 Start the service first:  uv run uvicorn predict:app --host 0.0.0.0 --port 9696
 Then run:                 uv run python predict-test.py
+
+To test the cloud deployment, pass its address:
+                          uv run python predict-test.py https://<app-name>.fly.dev
 """
+
+import sys
 
 import requests
 
 
-url = 'http://localhost:9696/predict'
+host = sys.argv[1] if len(sys.argv) > 1 else 'http://localhost:9696'
+url = f'{host}/predict'
 
 patient_id = 'patient-563'
 patient = {
