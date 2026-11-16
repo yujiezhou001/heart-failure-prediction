@@ -223,7 +223,12 @@ cd heart-failure-prediction
 uv sync
 ```
 
-`uv sync` creates a `.venv` folder with the exact library versions from `uv.lock`.
+`uv sync` creates a `.venv` folder with the exact library versions from `uv.lock`. The dependencies in `pyproject.toml` are in two groups:
+
+- **main:** what `train.py` and `predict.py` need (pandas, NumPy, scikit-learn, XGBoost, FastAPI, Uvicorn)
+- **dev:** what only the notebook and the test script need (ipykernel, Matplotlib, seaborn, requests)
+
+`uv sync` installs both. The Docker image installs only the main group (`uv sync --no-dev`).
 
 To use the environment, either activate it:
 
@@ -349,6 +354,42 @@ The fields use the same names and values as the prepared data in the notebook (l
 
 A missing `resting_bp` or `cholesterol` is filled with the training median saved in `model.bin`, the same way as during training. Any other wrong or missing value is rejected with a `422` error that says which field is wrong. For example, `"sex": "M"` gives `Input should be 'm' or 'f'`.
 
+## Running with Docker
+
+The [`Dockerfile`](Dockerfile) packages the prediction service with the exact library versions from `uv.lock`, so it runs the same way on any computer with [Docker](https://docs.docker.com/get-docker/). It:
+
+1. starts from the official `python:3.12.13-slim` image
+2. copies in `uv` and installs the main dependencies with `uv sync --locked --no-dev`
+3. copies `predict.py` and `model.bin`
+4. starts the service with `uvicorn` on port 9696
+
+Build the image:
+
+```bash
+docker build -t heart-failure-prediction .
+```
+
+Run it:
+
+```bash
+docker run -it --rm -p 9696:9696 heart-failure-prediction
+```
+
+`-p 9696:9696` connects port 9696 on your computer to port 9696 inside the container, so the service is at http://localhost:9696, as before. Test it from a second terminal in the same way:
+
+```bash
+uv run python predict-test.py
+```
+
+```
+{'heart_disease_probability': 0.924, 'heart_disease': True}
+refer patient-563 for follow-up tests
+```
+
+Stop the container with Ctrl+C.
+
+The image is about 2.3 GB on disk. About 200 MB of that is NVIDIA's NCCL library, which XGBoost installs on Linux for training on GPUs. This project doesn't use it, but it comes with the standard `xgboost` package.
+
 ## Project structure
 
 ```
@@ -360,6 +401,8 @@ A missing `resting_bp` or `cholesterol` is filled with the training median saved
 ├── model.bin           # the trained model (fill values, DictVectorizer, XGBoost, threshold)
 ├── predict.py          # the prediction web service (FastAPI)
 ├── predict-test.py     # sends an example patient to the running service
+├── Dockerfile          # builds the image for the prediction service
+├── .dockerignore       # files Docker doesn't need to copy
 ├── pyproject.toml      # project dependencies
 ├── uv.lock             # exact versions of every library
 └── README.md
